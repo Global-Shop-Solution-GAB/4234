@@ -1,0 +1,90 @@
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+v.Local.sPart.Declare(String)
+v.Local.sTemp.Declare(String)
+v.Local.i.Declare(Long)
+v.Local.ilen.Declare(Long)
+v.Local.bCheck.Declare(boolean)
+
+'FEQ 10/2016 for Dover MEI.
+'Sets the default bin for a new inventory part to 'S00000
+
+'Changed by SFF on 11/10 to S00000, their facility flooded and closed so default bin changed and defaulted some other values.
+
+Variable.Local.sHook.Declare(String)
+Variable.Local.sHook.Set(Variable.Caller.Hook)
+
+
+Function.Intrinsic.Control.SelectCase(Variable.Local.sHook)
+'Hook 10120 is the populate hook for inventory parts
+Function.Intrinsic.Control.Case("10120")
+
+	'default sort code:
+	'set the boolean first
+	f.Intrinsic.String.IsInString(v.Passed.000007.Trim,"-",True,v.Local.bCheck)
+
+	f.Intrinsic.Control.If(v.Local.bCheck,=,True)
+		'set the sort code to the value in position 0 after the split
+		f.Intrinsic.String.Split(v.Passed.000007.Trim,"-",v.Local.sPart)
+		v.Passed.000025.Set(v.Local.sPart(0))
+		
+	'if part is just 6 Characters long with NO "-", then default to the first two characters.	
+	f.Intrinsic.Control.Else
+		'get the length too for the elseif
+		f.Intrinsic.String.Len(v.Passed.000007.Trim,v.Local.ilen)
+		f.Intrinsic.Control.If(v.Local.ilen,=,6)
+			f.Intrinsic.String.Left(v.Passed.000007,2,v.Local.sTemp)
+			v.Passed.000025.Set(v.Local.sTemp)
+		f.Intrinsic.Control.EndIf	
+	f.Intrinsic.Control.EndIf
+
+	'default the bin
+	F.Intrinsic.Control.If(V.Passed.000016.Trim,=,"")
+		Variable.Passed.000016.Set("S00000")
+	F.Intrinsic.Control.EndIf
+	
+	
+	'default Purch UM to Inv UM  and Prod Line to D1
+	f.Intrinsic.Control.If(v.Passed.000023.Trim,=,"")
+		v.Passed.000023.Set(v.Passed.000014)	
+	f.Intrinsic.Control.EndIf
+	f.Intrinsic.Control.If(v.Passed.000011.Trim,=,"")
+		v.Passed.000011.Set("D1")
+	f.Intrinsic.Control.EndIf
+	
+	
+'Post save hook
+Function.Intrinsic.Control.Case("10125")
+	F.Intrinsic.Control.If(V.Passed.000016.Trim,=,"")
+		Variable.Passed.000016.Set("S00000")
+	F.Intrinsic.Control.EndIf
+'Hook 13280 is the populate hook for the options screen of inventory parts.
+Function.Intrinsic.Control.Case("13280")
+	F.Intrinsic.Control.If(V.Passed.000071,=,"")
+		Variable.Passed.000071.Set("S00000")
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndSelect
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4234_Default_Bin.gas",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+
+Program.Sub.Main.End
+
+Program.Sub.Comments.Start
+${$0$}$GCG_4234_Default_Bin$}$SISCO$}$10/17/2016 12:21:13 PM$}$False
+${$3$}$0$}$$}$0$}$-1$}$$}$12:00:00 AM$}$This project was created by FEQ on October 2016 for Dover MEI. 
+This gab script will be attached to hooks 10120 and 13280, and will auto populate S00001 to the Bin and Stocking Bin of an inventory part when Inventory > File > Inventory Parts > New.
+Program.Sub.Comments.End
